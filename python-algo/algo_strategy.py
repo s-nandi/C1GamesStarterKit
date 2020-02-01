@@ -181,7 +181,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
         max_num_pings = game_state.BITS
         max_health = 15 * max_num_pings
-        valid_placements = [position for position in self.our_locations if self.can_spawn(PING, position, max_num_pings)]
+        valid_placements = [position for position in self.our_locations if game_state.can_spawn(PING, position, max_num_pings)]
         potential_damages = location_to_damage(game_state, valid_placements)
         good_indices = []
         for i in range(len(valid_placements)):

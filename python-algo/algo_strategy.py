@@ -130,27 +130,14 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Now build reactive defenses based on where the enemy scored
         self.build_reactive_defense(game_state)
 
-        # If the turn is less than 5, stall with Scramblers and wait to see enemy's base
-        if game_state.turn_number < 5:
-            self.stall_with_scramblers(game_state)
-        else:
-            # Now let's analyze the enemy base to see where their defenses are concentrated.
-            # If they have many units in the front we can build a line for our EMPs to attack them at long range.
-            if self.detect_enemy_unit(game_state, unit_type=None, valid_x=None, valid_y=[14, 15]) > 10:
-                self.emp_line_strategy(game_state)
-            else:
-                # They don't have many units in the front so lets figure out their least defended area and send Pings there.
-                # Only try to spawn Ping's if it would be effective
-                # Sending more at once is better since attacks can only hit a single ping at a time
-                spammed_pings = self.spam_pings_if_good(game_state)
-                # Might want to use another strategy if pings were not used
-                if not spammed_pings:
-                    pass
-
-
-                # Lastly, if we have spare cores, let's build some Encryptors to boost our Pings' health.
-                encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
-                game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
+        spammed_pings = self.spam_pings_if_good(game_state)
+        # Fixme: Might want to use another strategy if pings were not deployaed
+        if not spammed_pings:
+            pass
+        
+        # Lastly, if we have spare cores, let's build some Encryptors to boost our Pings' health.
+        encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
+        game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
 
     def stall_with_scramblers(self, game_state):
         """

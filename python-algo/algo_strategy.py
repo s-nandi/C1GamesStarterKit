@@ -130,14 +130,18 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Now build reactive defenses based on where the enemy scored
         self.build_reactive_defense(game_state)
 
-        spammed_pings = self.spam_pings_if_good(game_state)
-        # Fixme: Might want to use another strategy if pings were not deployaed
-        if not spammed_pings:
+        # Fixme: Add scramblers on first turn
+        if game_state.turn_number == 0:
             pass
-        
+        else:
+            spammed_pings = self.spam_pings_if_good(game_state)
+            # Fixme: Might want to use another strategy if pings were not deployaed
+            if not spammed_pings:
+                pass
+
         # Lastly, if we have spare cores, let's build some Encryptors to boost our Pings' health.
-        encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
-        game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
+        # encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
+        # game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
 
     def stall_with_scramblers(self, game_state):
         """
@@ -166,6 +170,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
         Places num_ping pings at a fixed location if it would be effective
         """
+
         max_num_pings = game_state.BITS
         max_health = 15 * max_num_pings
         valid_placements = [position for position in self.our_locations if game_state.can_spawn(PING, position, max_num_pings)]

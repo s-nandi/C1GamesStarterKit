@@ -56,6 +56,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.scored_on_locations = []
         self.our_spawns = []
         self.our_locations = []
+        self.our_placements = [[16, 2], [11, 2], [15, 1], [12, 1]]
         self.init_our_locations()
 
 
@@ -132,12 +133,16 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         # Fixme: Add scramblers on first turn
         if game_state.turn_number == 0:
-            pass
-        else:
-            spammed_pings = self.spam_pings_if_good(game_state)
-            # Fixme: Might want to use another strategy if pings were not deployaed
-            if not spammed_pings:
-                pass
+            game_state.attempt_spawn(SCRAMBLER, [19, 5])
+            game_state.attempt_spawn(SCRAMBLER, [22, 8])
+        elif game_state.turn_number == 1:
+            game_state.attempt_spawn(SCRAMBLER, [1, 12])
+            game_state.attempt_spawn(SCRAMBLER, [26, 12])
+
+        spammed_pings = self.spam_pings_if_good(game_state)
+        # Fixme: Might want to use another strategy if pings were not deployaed
+        if not spammed_pings:
+            eprint("Did nothing")
 
         # Lastly, if we have spare cores, let's build some Encryptors to boost our Pings' health.
         # encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
@@ -173,20 +178,14 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         max_num_pings = game_state.BITS
         eprint("Num pings: ", max_num_pings)
-        max_health = 15 * max_num_pings
-        valid_placements = [position for position in self.our_locations if game_state.can_spawn(PING, position, max_num_pings)]
-        # assert len(valid_placements) > 0
+        valid_placements = self.our_placements[:]
         potential_damages = self.location_to_damages(game_state, valid_placements)
-        good_indices = []
-        for i in range(len(valid_placements)):
-            if spawn_attacker_threshold(max_health, potential_damages[i]) or max_num_pings >= 10:
-                good_indices.append(i)
-        # Only spawn Pings if we determine they are good enough as per spawn_attacker_threshold
-        if good_indices:
-            ind = random.choice(good_indices)
-            deploy_location = valid_placements[ind]
+        eprint("Damages: ", potential_damages)
+        ## Fixme: Use potential_damages to figure out best spawn point
+        if max_num_pings >= 2:
+            deploy_location = valid_placements[0]
             assert game_state.can_spawn(PING, deploy_location, max_num_pings)
-            game_state.attempt_spawn(PING, location, max_num_pings)
+            game_state.attempt_spawn(PING, deploy_location, max_num_pings)
             return True
         else:
             return False

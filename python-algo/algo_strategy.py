@@ -5,7 +5,6 @@ import warnings
 from sys import maxsize
 import json
 import sys
-from functools import reduce
 
 """
 They capture stdout, so we have a custom print that uses stderr
@@ -32,16 +31,10 @@ class AlgoStrategy(gamelib.AlgoCore):
         seed = random.randrange(maxsize)
         random.seed(seed)
         gamelib.debug_write('Random seed: {}'.format(seed))
-        # These are priority-sorted lists of where we want to have units
+        # This is a priority-sorted list of where we want to have filters
         self.destructor_goals = [[3, 12], [24, 12], [13, 3], [14, 3]]
         # Diagonal defense line
-        self.filter_goals = [[5,11], [6,10], [7,9], [8,8], [9,7], [10,6], [11,5], [22,11], [21,10], [20,9], [19,8], [18,7], [17,6], [16,5]]
-        # Destructor defense
-        self.filter_goals += [[4,12], [23,12], [3,13], [24,13]]
-        # More destructors (it's okay to build all destructors first (upgrade cost = build cost)
-        self.secondary_destructor_goals = [[2,13],[25,13]]
-        # Either 1 or 6 encryptors are helpful, so we just use 1
-        self.encryptor_goals = [[13,2]]
+        self.filter_goals = [[5,11], [22,11], [6,10], [21,10], [7,9], [20,9], [8,8], [19,8], [9,7], [18,7], [10,6], [17,6]]
 
     def on_game_start(self, config):
         """ 
@@ -105,69 +98,23 @@ class AlgoStrategy(gamelib.AlgoCore):
     def build_initial_defences(self, gs):
         gs.attempt_spawn(DESTRUCTOR, self.destructor_goals)
 
-    def destructor_set_built(self, gs, d_list):
-        # This filthy line checks that all destructors have been built
-        return reduce(lambda a,b: a and b, map(lambda loc: gs.contains_stationary_unit(loc), d_list))
-
     """
     Build as much as possible in priority order while cores are available
     """
     def build_reactive_defense(self, gs):
         # FIXME: If we've lost destructors, things are bad - maybe consider strategy change
         gs.attempt_spawn(DESTRUCTOR, self.destructor_goals)
-        # Check that we fixed all our destructors before spending on filters
-        if not self.destructor_set_built(gs, self.destructor_goals):
-            return
         # We do this one-by one since we never want to place a filter that we don't upgrade
         for f in self.filter_goals:
             # We only create a filter if we can also upgrade it
             if gs.get_resource(CORES) < 2:
                 return
-#eprint("Building filter at ", f, " as CORES: ", gs.get_resource(CORES))
             gs.attempt_spawn(FILTER, [f])
             gs.attempt_upgrade([f])
         # If we still have bits left, upgrade the destructors (we already made
         # sure they all existed earlier)
         # TODO: Only do this if they have encryptors
         gs.attempt_upgrade(self.destructor_goals)
-        ### MID_GAME ###
-        # Initial set of defenses is done, now we attack and reinforce
-        ### MID GAME ###
-        # Reinforce our attacking units
-        gs.attempt_spawn(ENCRYPTOR, self.encryptor_goals)
-        # Build more destructors in our weak spots (the corners)
-        gs.attempt_spawn(DESTRUCTOR, self.secondary_destructor_goals)
-        # And upgrade
-        gs.attempt_upgrade(self.secondary_destructor_goals)
-        # If we still have money and the destructors have all been built, go crazy on filters
-        if not self.destructor_set_built(gs, self.secondary_destructor_goals):
-            return
-        # Upgrade highest y-valued filters first
-        filter_goals_for_reinforcement = sorted(self.filter_goals, key=lambda f: f[1], reverse=True)
-        for f in filter_goals_for_reinforcement:
-            # Build one greater x if on left
-            x = f[0]
-            y = f[1]
-            if x < 13:
-                x += 1
-            else:
-                x -= 1
-            # Keep the center path clear
-            if x >= 12 and x <= 15:
-                continue
-            # We only create a filter if we can also upgrade it
-            if gs.get_resource(CORES) < 2:
-                return
-            gs.attempt_spawn(FILTER, [x, y])
-            gs.attempt_upgrade([x, y])
-        ### END GAME ###
-        # We've build everything that we reasonably need, now save up a few
-        # cores for repairs before building more
-        ### END GAME ###
-        if gs.get_resource(CORES) < 12:
-            return
-        cores_to_spend = gs.get_resource(CORES) - 12
-
 
     """
     NOTE: All the methods after this point are part of the sample starter-algo
@@ -191,6 +138,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         elif game_state.turn_number == 1:
             game_state.attempt_spawn(SCRAMBLER, [1, 12])
             game_state.attempt_spawn(SCRAMBLER, [26, 12])
+        elif game_state.turn_number <= 5:
+            game_state.attempt_spawn(SCRAMBLER, [0, 13])
+            game_state.attempt_spawn(SCRAMBLER, [27, 13])
 
         spammed_pings = self.spam_pings_if_good(game_state)
         # Fixme: Might want to use another strategy if pings were not deployaed
@@ -225,18 +175,16 @@ class AlgoStrategy(gamelib.AlgoCore):
             """
 
     def spam_pings_if_good(self, game_state):
-        """
-        Places num_ping pings at a fixed location if it would be effective
-        """
-
-        max_num_pings = game_state.BITS
+        max_num_pings = int(game_state.get_resource(BITS, 0))
         eprint("Num pings: ", max_num_pings)
         valid_placements = self.our_placements[:]
-        potential_damages = self.location_to_damages(game_state, valid_placements)
-        eprint("Damages: ", potential_damages)
+        # potential_damages = self.location_to_damages(game_state, valid_placements)
+        # eprint("Damages: ", potential_damages)
         ## Fixme: Use potential_damages to figure out best spawn point
-        if max_num_pings >= 2:
-            deploy_location = valid_placements[0]
+        good_indices = [i for i in range(len(valid_placements))]
+        if max_num_pings >= 10:
+            ind = random.choice(good_indices)
+            deploy_location = valid_placements[ind]
             assert game_state.can_spawn(PING, deploy_location, max_num_pings)
             game_state.attempt_spawn(PING, deploy_location, max_num_pings)
             return True
@@ -259,11 +207,10 @@ class AlgoStrategy(gamelib.AlgoCore):
             if unit_class.cost[game_state.BITS] < gamelib.GameUnit(cheapest_unit, game_state.config).cost[game_state.BITS]:
                 cheapest_unit = unit
 
-        ### JJB: I commented this as it builds stupid filter lines ###
         # Now let's build out a line of stationary units. This will prevent our EMPs from running into the enemy base.
         # Instead they will stay at the perfect distance to attack the front two rows of the enemy base.
-#        for x in range(27, 5, -1):
-#            game_state.attempt_spawn(cheapest_unit, [x, 11])
+        for x in range(27, 5, -1):
+            game_state.attempt_spawn(cheapest_unit, [x, 11])
 
         # Now spawn EMPs next to the line
         # By asking attempt_spawn to spawn 1000 units, it will essentially spawn as many as we have resources for

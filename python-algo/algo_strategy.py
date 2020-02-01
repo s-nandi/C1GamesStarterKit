@@ -185,7 +185,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         potential_damages = self.location_to_damages(game_state, valid_placements)
         good_indices = []
         for i in range(len(valid_placements)):
-            if spawn_attacker_threshold(max_health, potential_damages[i]):
+            if spawn_attacker_threshold(max_health, potential_damages[i]) or max_num_pings >= 10:
                 good_indices.append(i)
         # Only spawn Pings if we determine they are good enough as per spawn_attacker_threshold
         if good_indices:

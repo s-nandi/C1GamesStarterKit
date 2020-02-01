@@ -172,11 +172,12 @@ class AlgoStrategy(gamelib.AlgoCore):
         # We've build everything that we reasonably need, now save up a few
         # cores for repairs before building more
         ### END GAME ###
-        if gs.get_resource(CORES) < 12:
-            return
-        cores_to_spend = gs.get_resource(CORES) - 12
+        #if gs.get_resource(CORES) < 12:
+        #            return
+        #        cores_to_spend = gs.get_resource(CORES) - 12
+        # FIXME: We don't leave extra
         gs.attempt_spawn(DESTRUCTOR, self.third_destructor_goals)
-        gs.attempt_upgrade(DESTRUCTOR, self.third_destructor_goals)
+        gs.attempt_upgrade(self.third_destructor_goals)
 
     """
     NOTE: All the methods after this point are part of the sample starter-algo

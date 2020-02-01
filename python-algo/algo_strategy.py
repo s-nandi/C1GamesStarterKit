@@ -54,6 +54,22 @@ class AlgoStrategy(gamelib.AlgoCore):
         # This is a good place to do initial setup
         self.setup_complete = False
         self.scored_on_locations = []
+        self.our_spawns = []
+        self.our_locations = []
+        self.init_our_locations()
+
+
+    def init_our_locations(self):
+        our_locations = []
+        min_x = 13
+        max_x = 14
+        for y in range(0, 14):
+            self.our_spawns.append((min_x, y))
+            self.our_spawns.append((max_x, y))
+            for x in range(min_x, max_x + 1):
+                self.our_locations.append((x, y))
+            min_x -= 1
+            max_x += 1
 
     def on_turn(self, turn_state):
         """
@@ -165,7 +181,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
         max_num_pings = game_state.BITS
         max_health = 15 * max_num_pings
-        valid_placements = [position for position in self.our_locations if can_spawn(PING, position, max_num_pings)]
+        valid_placements = [position for position in self.our_locations if self.can_spawn(PING, position, max_num_pings)]
         potential_damages = location_to_damage(game_state, valid_placements)
         good_indices = []
         for i in range(len(valid_placements)):

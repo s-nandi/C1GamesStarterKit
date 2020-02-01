@@ -124,14 +124,13 @@ class AlgoStrategy(gamelib.AlgoCore):
                 self.emp_line_strategy(game_state)
             else:
                 # They don't have many units in the front so lets figure out their least defended area and send Pings there.
-
-                # Only spawn Ping's every other turn
+                # Only try to spawn Ping's if it would be effective
                 # Sending more at once is better since attacks can only hit a single ping at a time
-                if game_state.turn_number % 2 == 1:
-                    # To simplify we will just check sending them from back left and right
-                    ping_spawn_location_options = [[13, 0], [14, 0]]
-                    best_location = self.least_damage_spawn_location(game_state, ping_spawn_location_options)
-                    game_state.attempt_spawn(PING, best_location, 1000)
+                spammed_pings = self.spam_pings_if_good(game_state)
+                # Might want to use another strategy if pings were not used
+                if not spammed_pings:
+                    pass
+
 
                 # Lastly, if we have spare cores, let's build some Encryptors to boost our Pings' health.
                 encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
@@ -159,6 +158,29 @@ class AlgoStrategy(gamelib.AlgoCore):
             We don't have to remove the location since multiple information 
             units can occupy the same space.
             """
+
+    def spam_pings_if_good(self, game_state):
+        """
+        Places num_ping pings at a fixed location if it would be effective
+        """
+        max_num_pings = game_state.BITS
+        max_health = 15 * max_num_pings
+        valid_placements = [position for position in self.our_locations if can_spawn(PING, position, max_num_pings)]
+        potential_damages = location_to_damage(game_state, valid_placements)
+        good_indices = []
+        for i in range(len(valid_placements)):
+            if spawn_attacker_threshold(max_health, potential_damages[i]):
+                good_indices.append(i)
+        # Only spawn Pings if we determine they are good enough as per spawn_attacker_threshold
+        if good_indices:
+            ind = random.choice(good_indices)
+            game_state.attempt_spawn(PING, location, max_num_pings)
+            return True
+        else:
+            return False
+    
+    def spawn_attacker_threshold(self, health, damage_taken):
+        return health >= 1.5 * damage_taken
 
     def emp_line_strategy(self, game_state):
         """

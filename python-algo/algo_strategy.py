@@ -5,6 +5,7 @@ import warnings
 from sys import maxsize
 import json
 import sys
+from functools import reduce
 
 """
 They capture stdout, so we have a custom print that uses stderr

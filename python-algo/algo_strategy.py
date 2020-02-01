@@ -152,7 +152,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         # If we still have money and the destructors have all been built, go crazy on filters
         if not self.destructor_set_built(gs, self.secondary_destructor_goals):
             return
-        gs.attempt_spawn(ENCRYPTOR, [4,11], [23,11]) #FIXME: This will be subject to priority inversions
+        gs.attempt_spawn(ENCRYPTOR, [[4,11], [23,11]]) #FIXME: This will be subject to priority inversions
         # Upgrade highest y-valued filters first
         filter_goals_for_reinforcement = sorted(self.filter_goals, key=lambda f: f[1], reverse=True)
         for f in filter_goals_for_reinforcement:

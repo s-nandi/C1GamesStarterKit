@@ -12,34 +12,35 @@
   },
   "unitInformation": [
     {
-      "cost1": 1.0,
+      "cost1": 0.5,
       "getHitRadius":0.01,
       "display":"Filter",
       "shorthand":"FF",
-      "startHealth":60.0,
+      "startHealth":6.0,
       "unitCategory": 0,
       "refundPercentage": 0.75,
       "turnsRequiredToRemove": 1,
       "upgrade": {
+		    "cost1": 1.5,
         "startHealth": 120.0
       }
     },
     {
       "cost1":4.0,
       "getHitRadius":0.01,
-      "shieldPerUnit":3.0,
+      "shieldPerUnit":2.0,
       "display":"Encryptor",
       "shieldRange":3.5,
       "shorthand":"EF",
       "startHealth":30.0,
       "unitCategory": 0,
-      "shieldBonusPerY": 0.0,
+      "shieldBonusPerY": 0.25,
       "refundPercentage": 0.75,
       "shieldDecay": 0.0,
       "turnsRequiredToRemove": 1,
       "upgrade": {
         "shieldRange": 7,
-        "shieldPerUnit":4
+        "shieldPerUnit":3
       }
     },
     {
@@ -107,10 +108,10 @@
       "speed":0.25,
       "unitCategory": 1,
       "selfDestructDamageWalker": 40.0,
-      "selfDestructDamageTower": 40.0,
+      "selfDestructDamageTower": 0.0,
       "metalForBreach": 1.0,
-      "selfDestructRange": 1.5,
-      "selfDestructStepsRequired": 5
+      "selfDestructRange": 6,
+      "selfDestructStepsRequired": 0
     },
     {
       "display":"Remove",

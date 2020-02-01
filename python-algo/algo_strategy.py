@@ -34,7 +34,15 @@ class AlgoStrategy(gamelib.AlgoCore):
         # This is a priority-sorted list of where we want to have filters
         self.destructor_goals = [[3, 12], [24, 12], [13, 3], [14, 3]]
         # Diagonal defense line
-        self.filter_goals = [[5,11], [22,11], [6,10], [21,10], [7,9], [20,9], [8,8], [19,8], [9,7], [18,7], [10,6], [17,6]]
+        self.filter_goals = [[5,11], [6,10], [7,9], [8,8], [9,7], [10,6], [11,5], [22,11], [21,10], [20,9], [19,8], [18,7], [17,6], [16,5]]
+        # Destructor defense
+        self.filter_goals += [[4,12], [23,12], [3,13], [24,13]]
+        # More destructors (it's okay to build all destructors first (upgrade cost = build cost)
+        self.secondary_destructor_goals = [[2,13],[25,13]]
+        # Either 1 or 6 encryptors are helpful, so we just use 1
+        self.encryptor_goals = [[13,2]]
+        # More destructors!
+#self.
 
     def on_game_start(self, config):
         """ 
@@ -109,12 +117,59 @@ class AlgoStrategy(gamelib.AlgoCore):
             # We only create a filter if we can also upgrade it
             if gs.get_resource(CORES) < 2:
                 return
+            old = gs.get_resource(CORES)
+            eprint("Building filter at ", f, " as CORES: ", gs.get_resource(CORES))
             gs.attempt_spawn(FILTER, [f])
+            new = gs.get_resource(CORES)
+            if old - new > 0.5: # If it bugged our accounting
+                gs._player_resources[0]['cores'] += .5
+            eprint("Upgrading filter at ", f, ". CORES: ", gs.get_resource(CORES))
             gs.attempt_upgrade([f])
+        ### MID_GAME ###
+        # Initial set of defenses is done, now we attack and reinforce
+        ### MID GAME ###
+        # Reinforce our attacking units
+        gs.attempt_spawn(ENCRYPTOR, self.encryptor_goals)
+        # Build more destructors in our weak spots (the corners)
+        gs.attempt_spawn(DESTRUCTOR, self.secondary_destructor_goals)
         # If we still have bits left, upgrade the destructors (we already made
         # sure they all existed earlier)
         # TODO: Only do this if they have encryptors
         gs.attempt_upgrade(self.destructor_goals)
+        # And upgrade
+        gs.attempt_upgrade(self.secondary_destructor_goals)
+        # If we still have money and the destructors have all been built, go crazy on filters
+        if not self.destructor_set_built(gs, self.secondary_destructor_goals):
+            return
+        # Upgrade highest y-valued filters first
+        filter_goals_for_reinforcement = sorted(self.filter_goals, key=lambda f: f[1], reverse=True)
+        for f in filter_goals_for_reinforcement:
+            # Build one greater x if on left
+            x = f[0]
+            y = f[1]
+            if x < 13:
+                x += 1
+            else:
+                x -= 1
+            # Keep the center path clear
+            if x >= 12 and x <= 15:
+                continue
+            # We only create a filter if we can also upgrade it
+            if gs.get_resource(CORES) < 2:
+                return
+            old = gs.get_resource(CORES)
+            gs.attempt_spawn(FILTER, [x, y])
+            new = gs.get_resource(CORES)
+            if old - new > 0.5: # If it bugged our accounting
+                gs._player_resources[0]['cores'] += .5
+            gs.attempt_upgrade([x, y])
+        ### END GAME ###
+        # We've build everything that we reasonably need, now save up a few
+        # cores for repairs before building more
+        ### END GAME ###
+        if gs.get_resource(CORES) < 12:
+            return
+        cores_to_spend = gs.get_resource(CORES) - 12
 
     """
     NOTE: All the methods after this point are part of the sample starter-algo

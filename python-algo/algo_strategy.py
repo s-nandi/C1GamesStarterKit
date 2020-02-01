@@ -42,7 +42,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Either 1 or 6 encryptors are helpful, so we just use 1
         self.encryptor_goals = [[13,2]]
         # More destructors!
-#self.
+        self.third_destructor_goals = [[13,4], [14,4], [12,3], [15,3]]
 
     def on_game_start(self, config):
         """ 
@@ -106,6 +106,10 @@ class AlgoStrategy(gamelib.AlgoCore):
     def build_initial_defences(self, gs):
         gs.attempt_spawn(DESTRUCTOR, self.destructor_goals)
 
+    def destructor_set_built(self, gs, d_list):
+        # This filthy line checks that all destructors have been built
+        return reduce(lambda a,b: a and b, map(lambda loc: gs.contains_stationary_unit(loc), d_list))
+
     """
     Build as much as possible in priority order while cores are available
     """
@@ -118,12 +122,12 @@ class AlgoStrategy(gamelib.AlgoCore):
             if gs.get_resource(CORES) < 2:
                 return
             old = gs.get_resource(CORES)
-            eprint("Building filter at ", f, " as CORES: ", gs.get_resource(CORES))
+#            eprint("Building filter at ", f, " as CORES: ", gs.get_resource(CORES))
             gs.attempt_spawn(FILTER, [f])
             new = gs.get_resource(CORES)
             if old - new > 0.5: # If it bugged our accounting
                 gs._player_resources[0]['cores'] += .5
-            eprint("Upgrading filter at ", f, ". CORES: ", gs.get_resource(CORES))
+#            eprint("Upgrading filter at ", f, ". CORES: ", gs.get_resource(CORES))
             gs.attempt_upgrade([f])
         ### MID_GAME ###
         # Initial set of defenses is done, now we attack and reinforce
@@ -170,6 +174,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         if gs.get_resource(CORES) < 12:
             return
         cores_to_spend = gs.get_resource(CORES) - 12
+        gs.attempt_spawn(DESTRUCTOR, self.third_destructor_goals)
+        gs.attempt_upgrade(DESTRUCTOR, self.third_destructor_goals)
 
     """
     NOTE: All the methods after this point are part of the sample starter-algo

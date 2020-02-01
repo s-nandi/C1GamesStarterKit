@@ -38,8 +38,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.filter_goals = [[5,11], [6,10], [7,9], [8,8], [9,7], [10,6], [11,5], [22,11], [21,10], [20,9], [19,8], [18,7], [17,6], [16,5]]
         # Destructor defense
         self.filter_goals += [[4,12], [23,12], [3,13], [24,13]]
+        #self.filter_goals += [[3,13], [24,13]]
         # More destructors (it's okay to build all destructors first (upgrade cost = build cost)
-        self.secondary_destructor_goals = [[2,13],[25,13]]
+        self.secondary_destructor_goals = [[2,13],[25,13]]#,[4,12],[23,12]]
         # Either 1 or 6 encryptors are helpful, so we just use 1
         self.encryptor_goals = [[13,2]]
         # More destructors!
@@ -151,6 +152,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         # If we still have money and the destructors have all been built, go crazy on filters
         if not self.destructor_set_built(gs, self.secondary_destructor_goals):
             return
+        gs.attempt_spawn(ENCRYPTOR, [4,11], [23,11]) #FIXME: This will be subject to priority inversions
         # Upgrade highest y-valued filters first
         filter_goals_for_reinforcement = sorted(self.filter_goals, key=lambda f: f[1], reverse=True)
         for f in filter_goals_for_reinforcement:
@@ -183,6 +185,20 @@ class AlgoStrategy(gamelib.AlgoCore):
         # FIXME: We don't leave extra
         gs.attempt_spawn(DESTRUCTOR, self.third_destructor_goals)
         gs.attempt_upgrade(self.third_destructor_goals)
+        # Backfill another line of destructors
+        final_destructor_locs = []
+        for f in filter_goals_for_reinforcement:
+            # Build one greater x if on left
+            x = f[0]
+            y = f[1]
+            if x < 13:
+                x -= 1
+            else:
+                x += 1
+            gs.attempt_spawn(DESTRUCTOR, [x,y])
+            final_destructor_locs.append([x,y])
+        for d in final_destructor_locs:
+            gs.attempt_upgrade(d)
 
     """
     NOTE: All the methods after this point are part of the sample starter-algo

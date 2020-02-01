@@ -4,7 +4,13 @@ import math
 import warnings
 from sys import maxsize
 import json
+import sys
 
+"""
+They capture stdout, so we have a custom print that uses stderr
+"""
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 """
 Most of the algo code you write will be in this file unless you create new
@@ -25,6 +31,10 @@ class AlgoStrategy(gamelib.AlgoCore):
         seed = random.randrange(maxsize)
         random.seed(seed)
         gamelib.debug_write('Random seed: {}'.format(seed))
+        # This is a priority-sorted list of where we want to have filters
+        self.destructor_goals = [[3, 12], [24, 12], [13, 3], [14, 3]]
+        # Diagonal defense line
+        self.filter_goals = [[5,11], [22,11], [6,10], [21,10], [7,9], [20,9], [8,8], [19,8], [9,7], [18,7], [10,6], [17,6]]
 
     def on_game_start(self, config):
         """ 
@@ -42,10 +52,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         BITS = 1
         CORES = 0
         # This is a good place to do initial setup
+        self.setup_complete = False
         self.scored_on_locations = []
-
-    
-        
 
     def on_turn(self, turn_state):
         """
@@ -59,10 +67,37 @@ class AlgoStrategy(gamelib.AlgoCore):
         gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
+        if not self.setup_complete:
+            self.build_initial_defences(game_state)
+            self.setup_complete = True
+
         self.starter_strategy(game_state)
 
         game_state.submit_turn()
 
+    """
+    Build basic defenses using hardcoded locations. (Only call this once at the start!)
+    """
+    def build_initial_defences(self, gs):
+        gs.attempt_spawn(DESTRUCTOR, self.destructor_goals)
+
+    """
+    Build as much as possible in priority order while cores are available
+    """
+    def build_reactive_defense(self, gs):
+        # FIXME: If we've lost destructors, things are bad - maybe consider strategy change
+        gs.attempt_spawn(DESTRUCTOR, self.destructor_goals)
+        # We do this one-by one since we never want to place a filter that we don't upgrade
+        for f in self.filter_goals:
+            # We only create a filter if we can also upgrade it
+            if gs.get_resource(CORES) < 2:
+                return
+            gs.attempt_spawn(FILTER, [f])
+            gs.attempt_upgrade([f])
+        # If we still have bits left, upgrade the destructors (we already made
+        # sure they all existed earlier)
+        # TODO: Only do this if they have encryptors
+        gs.attempt_upgrade(self.destructor_goals)
 
     """
     NOTE: All the methods after this point are part of the sample starter-algo
@@ -76,8 +111,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         For offense we will use long range EMPs if they place stationary units near the enemy's front.
         If there are no stationary units to attack in the front, we will send Pings to try and score quickly.
         """
-        # First, place basic defenses
-        self.build_defences(game_state)
         # Now build reactive defenses based on where the enemy scored
         self.build_reactive_defense(game_state)
 
@@ -103,36 +136,6 @@ class AlgoStrategy(gamelib.AlgoCore):
                 # Lastly, if we have spare cores, let's build some Encryptors to boost our Pings' health.
                 encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
                 game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
-
-    def build_defences(self, game_state):
-        """
-        Build basic defenses using hardcoded locations.
-        Remember to defend corners and avoid placing units in the front where enemy EMPs can attack them.
-        """
-        # Useful tool for setting up your base locations: https://www.kevinbai.design/terminal-map-maker
-        # More community tools available at: https://terminal.c1games.com/rules#Download
-
-        # Place destructors that attack enemy units
-        destructor_locations = [[0, 13], [27, 13], [8, 11], [19, 11], [13, 11], [14, 11]]
-        # attempt_spawn will try to spawn units if we have resources, and will check if a blocking unit is already there
-        game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
-        
-        # Place filters in front of destructors to soak up damage for them
-        filter_locations = [[8, 12], [19, 12]]
-        game_state.attempt_spawn(FILTER, filter_locations)
-        # upgrade filters so they soak more damage
-        game_state.attempt_upgrade(filter_locations)
-
-    def build_reactive_defense(self, game_state):
-        """
-        This function builds reactive defenses based on where the enemy scored on us from.
-        We can track where the opponent scored by looking at events in action frames 
-        as shown in the on_action_frame function
-        """
-        for location in self.scored_on_locations:
-            # Build destructor one space above so that it doesn't block our own edge spawn locations
-            build_location = [location[0], location[1]+1]
-            game_state.attempt_spawn(DESTRUCTOR, build_location)
 
     def stall_with_scramblers(self, game_state):
         """

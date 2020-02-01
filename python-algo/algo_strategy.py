@@ -182,7 +182,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         max_num_pings = game_state.BITS
         max_health = 15 * max_num_pings
         valid_placements = [position for position in self.our_locations if game_state.can_spawn(PING, position, max_num_pings)]
-        potential_damages = location_to_damage(game_state, valid_placements)
+        potential_damages = self.location_to_damages(game_state, valid_placements)
         good_indices = []
         for i in range(len(valid_placements)):
             if spawn_attacker_threshold(max_health, potential_damages[i]):
@@ -238,6 +238,23 @@ class AlgoStrategy(gamelib.AlgoCore):
         
         # Now just return the location that takes the least damage
         return location_options[damages.index(min(damages))]
+
+    def location_to_damages(self, game_state, location_options):
+        """
+        This function gives us a list of estimated damages taken when spawning a unit at each location, 
+        the damages are ordered in the same order that locations are in location_options
+        """
+        damages = []
+        # Get the damage estimate each path will take
+        for location in location_options:
+            path = game_state.find_path_to_edge(location)
+            damage = 0
+            for path_location in path:
+                # Get number of enemy destructors that can attack the final location and multiply by destructor damage
+                damage += len(game_state.get_attackers(path_location, 0)) * gamelib.GameUnit(DESTRUCTOR, game_state.config).damage_i
+            damages.append(damage)
+        
+        return damages
 
     def detect_enemy_unit(self, game_state, unit_type=None, valid_x = None, valid_y = None):
         total_units = 0

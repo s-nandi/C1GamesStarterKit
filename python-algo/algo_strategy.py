@@ -66,6 +66,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.our_spawns = []
         self.our_locations = []
         self.our_placements = [[16, 2], [11, 2], [15, 1], [12, 1]]
+        self.wait_till_bits = 1
+        self.strategy = -1
+        self.min_strat = 0
+        self.max_strat = 3
+
         self.init_our_locations()
 
 
@@ -201,83 +206,76 @@ class AlgoStrategy(gamelib.AlgoCore):
         elif game_state.turn_number == 1:
             game_state.attempt_spawn(SCRAMBLER, [1, 12])
             game_state.attempt_spawn(SCRAMBLER, [26, 12])
-        elif game_state.turn_number <= 5:
+        elif False and game_state.turn_number <= 5:
             game_state.attempt_spawn(SCRAMBLER, [0, 13])
             game_state.attempt_spawn(SCRAMBLER, [27, 13])
 
-        spammed_pings = self.spam_pings_if_good(game_state)
-        # Fixme: Might want to use another strategy if pings were not deployaed
-        if not spammed_pings:
-            eprint("Did nothing")
+        num_bits = self.get_bits(game_state)
+        if num_bits >= self.wait_till_bits:
+            ## Fixme: Actually execute strategies 0 - 3
+            if self.strategy == 0:
+                self.spam_pings(game_state)
+            elif self.strategy == 1:
+                self.spam_emps(game_state)
+            elif self.strategy == 2:
+                pass
+            elif self.strategy == 3:
+                pass
+            else:
+                pass
+            self.strategy = random.randint(self.min_strat, self.max_strat)
+            self.wait_till_bits = self.min_ping_spawn_threshold(game_state.turn_number)
 
         # Lastly, if we have spare cores, let's build some Encryptors to boost our Pings' health.
-        # encryptor_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
+        # encryptor_locations = [[4, 11], [23, 11], [13, 3], [14, 3]]
         # game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
 
-    def stall_with_scramblers(self, game_state):
-        """
-        Send out Scramblers at random locations to defend our base from enemy moving units.
-        """
-        # We can spawn moving units on our edges so a list of all our edge locations
-        friendly_edges = game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_LEFT) + game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_RIGHT)
-        
-        # Remove locations that are blocked by our own firewalls 
-        # since we can't deploy units there.
-        deploy_locations = self.filter_blocked_locations(friendly_edges, game_state)
-        
-        # While we have remaining bits to spend lets send out scramblers randomly.
-        while game_state.get_resource(BITS) >= game_state.type_cost(SCRAMBLER)[BITS] and len(deploy_locations) > 0:
-            # Choose a random deploy location.
-            deploy_index = random.randint(0, len(deploy_locations) - 1)
-            deploy_location = deploy_locations[deploy_index]
-            
-            game_state.attempt_spawn(SCRAMBLER, deploy_location)
-            """
-            We don't have to remove the location since multiple information 
-            units can occupy the same space.
-            """
-
-    def spam_pings_if_good(self, game_state):
-        max_num_pings = int(game_state.get_resource(BITS, 0))
+    def spam_pings(self, game_state):
+        max_num_pings = self.get_bits(game_state)
         eprint("Num pings: ", max_num_pings)
         valid_placements = self.our_placements[:]
-        # potential_damages = self.location_to_damages(game_state, valid_placements)
-        # eprint("Damages: ", potential_damages)
-        ## Fixme: Use potential_damages to figure out best spawn point
-        good_indices = [i for i in range(len(valid_placements))]
-        if max_num_pings >= 10:
-            ind = random.choice(good_indices)
-            deploy_location = valid_placements[ind]
-            assert game_state.can_spawn(PING, deploy_location, max_num_pings)
-            game_state.attempt_spawn(PING, deploy_location, max_num_pings)
-            return True
+        potential_damages = self.location_to_damages(game_state, valid_placements)
+        min_damage_taken = min(potential_damages)
+        good_indices = [i for i in range(len(valid_placements)) if potential_damages[i] <= 1.5 * min_damage_taken]
+
+        ind = random.choice(good_indices)
+        deploy_location = valid_placements[ind]
+        assert game_state.can_spawn(PING, deploy_location, max_num_pings)
+        game_state.attempt_spawn(PING, deploy_location, max_num_pings)
+
+    def spam_emps(self, game_state):
+        max_num_pings = self.get_bits(game_state) // 3
+        eprint("Num pings: ", max_num_pings)
+        valid_placements = self.our_placements[:]
+        potential_damages = self.location_to_damages(game_state, valid_placements)
+        min_damage_taken = min(potential_damages)
+        good_indices = [i for i in range(len(valid_placements)) if potential_damages[i] <= 1.5 * min_damage_taken]
+
+        ind = random.choice(good_indices)
+        deploy_location = valid_placements[ind]
+        assert game_state.can_spawn(EMP, deploy_location, max_num_pings)
+        game_state.attempt_spawn(EMP, deploy_location, max_num_pings)
+
+    def get_bits(self, game_state):
+        return int(game_state.get_resource(BITS, 0))
+
+
+    def min_ping_spawn_threshold(self, turn):
+        """
+        Figure out the minimum number of spawnable pings to even bother
+        launching an attack given the turn number
+        """
+        if turn <= 5:
+            return 5
+        elif turn < 10:
+            return 10
+        elif turn <= 15:
+            return 15
         else:
-            return False
-    
+            return 20
+        
     def spawn_attacker_threshold(self, health, damage_taken):
         return health >= 1.5 * damage_taken
-
-    def emp_line_strategy(self, game_state):
-        """
-        Build a line of the cheapest stationary unit so our EMP's can attack from long range.
-        """
-        # First let's figure out the cheapest unit
-        # We could just check the game rules, but this demonstrates how to use the GameUnit class
-        stationary_units = [FILTER, DESTRUCTOR, ENCRYPTOR]
-        cheapest_unit = FILTER
-        for unit in stationary_units:
-            unit_class = gamelib.GameUnit(unit, game_state.config)
-            if unit_class.cost[game_state.BITS] < gamelib.GameUnit(cheapest_unit, game_state.config).cost[game_state.BITS]:
-                cheapest_unit = unit
-
-        # Now let's build out a line of stationary units. This will prevent our EMPs from running into the enemy base.
-        # Instead they will stay at the perfect distance to attack the front two rows of the enemy base.
-        for x in range(27, 5, -1):
-            game_state.attempt_spawn(cheapest_unit, [x, 11])
-
-        # Now spawn EMPs next to the line
-        # By asking attempt_spawn to spawn 1000 units, it will essentially spawn as many as we have resources for
-        game_state.attempt_spawn(EMP, [24, 10], 1000)
 
     def least_damage_spawn_location(self, game_state, location_options):
         """

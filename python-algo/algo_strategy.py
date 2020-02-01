@@ -172,8 +172,10 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
 
         max_num_pings = game_state.BITS
+        eprint("Num pings: ", max_num_pings)
         max_health = 15 * max_num_pings
         valid_placements = [position for position in self.our_locations if game_state.can_spawn(PING, position, max_num_pings)]
+        # assert len(valid_placements) > 0
         potential_damages = self.location_to_damages(game_state, valid_placements)
         good_indices = []
         for i in range(len(valid_placements)):
@@ -182,6 +184,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Only spawn Pings if we determine they are good enough as per spawn_attacker_threshold
         if good_indices:
             ind = random.choice(good_indices)
+            deploy_location = valid_placements[ind]
+            assert game_state.can_spawn(PING, deploy_location, max_num_pings)
             game_state.attempt_spawn(PING, location, max_num_pings)
             return True
         else:

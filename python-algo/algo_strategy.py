@@ -67,6 +67,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.our_spawns = []
         self.our_locations = []
         self.our_placements = [[16, 2], [11, 2], [15, 1], [12, 1]]
+        self.forward_placements = [[3, 10], [24, 10]]
+        self.backward_placements = [[14, 0], [13, 0]]
         self.wait_till_bits = 1
         self.strategy = -1
         self.min_strat = 0
@@ -229,12 +231,13 @@ class AlgoStrategy(gamelib.AlgoCore):
         num_bits = self.get_bits(game_state)
         if num_bits >= self.wait_till_bits:
             ## Fixme: Actually execute strategies 0 - 3
+            eprint("Run strategy", self.strategy)
             if self.strategy == 0:
                 self.spam_pings(game_state)
             elif self.strategy == 1:
                 self.spam_emps(game_state)
             elif self.strategy == 2:
-                pass
+                self.mix_ping_emp(game_state)
             elif self.strategy == 3:
                 pass
             else:
@@ -262,7 +265,7 @@ class AlgoStrategy(gamelib.AlgoCore):
     def spam_emps(self, game_state):
         max_num_pings = self.get_bits(game_state) // 3
         eprint("Num pings: ", max_num_pings)
-        valid_placements = self.our_placements[:]
+        valid_placements = self.forward_placements[:]
         potential_damages = self.location_to_damages(game_state, valid_placements)
         min_damage_taken = min(potential_damages)
         good_indices = [i for i in range(len(valid_placements)) if potential_damages[i] <= 1.5 * min_damage_taken]
@@ -272,9 +275,18 @@ class AlgoStrategy(gamelib.AlgoCore):
         assert game_state.can_spawn(EMP, deploy_location, max_num_pings)
         game_state.attempt_spawn(EMP, deploy_location, max_num_pings)
 
+    def mix_ping_emp(self, game_state):
+        max_num_emps = self.get_bits(game_state) // 3
+        num_emps = random.randint(0, max_num_emps)
+        num_pings = self.get_bits(game_state) - num_emps * 3
+        direction = random.randint(0, 1)
+        emp_position = self.forward_placements[direction]
+        ping_position = self.backward_placements[direction]
+        game_state.attempt_spawn(PING, ping_position, num_pings)
+        game_state.attempt_spawn(EMP, emp_position, num_emps)
+
     def get_bits(self, game_state):
         return int(game_state.get_resource(BITS, 0))
-
 
     def min_ping_spawn_threshold(self, turn):
         """
